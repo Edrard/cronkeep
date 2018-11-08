@@ -29,6 +29,7 @@ class FormFactory
 {
     const SIMPLE = 'simple';
     const ADVANCED = 'advanced';
+    const MAIL = 'mail';
     
     /**
      * Initializes the right add job form (simple or advanced) based on passed form data,

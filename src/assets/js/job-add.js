@@ -1,18 +1,18 @@
 /**
- * Copyright 2014 Bogdan Ghervan
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Copyright 2014 Bogdan Ghervan
+* 
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 var AddJobDialog = function(container, crontabService, globalAlertService) {
     var SPECIFIC_TIME = 'specificTime';
@@ -21,78 +21,89 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
     var WEEKLY = 'weekly';
     var MONTHLY = 'monthly';
     var YEARLY  = 'yearly';
-    
+
     var timePicker = $('input[name="time[picker]"]', container);
     var repeatPicker = $('.repeat', container);
     var simpleForm = $('.job-add-simple-form', container);
     var advancedForm = $('.job-add-advanced-form', container);
+    var mailForm = $('.job-add-mail-form', container);
     var saveButton = $('.btn-save', container);
-    
+
     var simpleFormAlertService = new AlertService($('.form-alerts', simpleForm));
     var advancedFormAlertService = new AlertService($('.form-alerts', advancedForm));
-    
+    var mailFormAlertService = new AlertService($('.form-alerts', mailForm));
+
     var errorClass = 'has-error';
-    
+
     // Opens job add / edit dialog
     this.open = function() {
         container.modal();
     };
-    
+
     // Tells whether the simple form is the one currently active
     var isSimpleFormActive = function() {
         return $('ul.nav li.active a', container).attr('data-mode') === 'simple';
     };
-    
+    var isMailFormActive = function() {
+        return $('ul.nav li.active a', container).attr('data-mode') === 'mail';
+    };
+
     // Retrieves simple or advanced form, whichever is active now
     var getActiveForm = function() {
         if (isSimpleFormActive()) {
             return simpleForm;
         }
+        if (isMailFormActive()) {
+            return mailForm;
+        }
         return advancedForm;
     };
-    
+
     // Retrieves alert service for the currently active form
     var getFormAlertService = function() {
         if (isSimpleFormActive()) {
             return simpleFormAlertService;
         }
+        if (isMailFormActive()) {
+            return mailFormAlertService;
+        }
         return advancedFormAlertService;
     };
-    
+
     // Assert-style function to compare time picker's value with passed value
     var assertTime = function(expected) {
         var timePicker = $('input[name="time[picker]"]:checked', container);
         return timePicker.val() === expected;
     };
-    
+
     // Assert-style function to compare repeat picker's value with passed value
     var assertRepeat = function(expected) {
         var repeatPicker = $('select[name="repeat[picker]"]', container);
         return repeatPicker.val() === expected;
     };
-    
+
     var submitHandler = function(form) {
         saveButton.button('loading');
         var oldHash = $('input[name=hash]', form).val();
         stripNewlines($('textarea.command', form));
-        
+
         $.post(baseUrl + '/job/save', $(form).serialize(), function(data) {
             // Show success message, close dialog and reset form
             globalAlertService.pushSuccess(data.msg);
             container.modal('hide');
             form.reset();
-            
+
             // Refresh edited job in the grid
             if (oldHash) {
                 crontabService.updateJob(oldHash, data.html, data.hash);
-            
-            // Append new job to the grid
+
+                // Append new job to the grid
             } else {
                 crontabService.appendJob(data.html, data.hash);
             }
         }).fail(function(data) {
             var msg = data.responseJSON.msg;
-            
+
             if ($.isPlainObject(msg)) {
                 $.each(msg, function(name, message) {
                     var element = $('[name="' + name + '"]', $(form));
@@ -106,31 +117,31 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
             saveButton.button('reset');
         });
     };
-    
+
     // Determines closest parent that can receive the errorClass
     var getParentToHighlight = function(element) {
         return $(element).closest('[data-has-error~="' + $(element).attr('name') + '"]');
     }
-    
+
     // Determines error container for the given element
     // (by looking for a matching data-error attribute)
     var getErrorContainer = function(element) {
         return $('[data-error="' + $(element).attr('name') + '"]', getActiveForm());
     };
-    
+
     // Applies highlight style to element that failed validation
     var highlightError = function(element) {
         getParentToHighlight(element).addClass(errorClass);
         return this;
     }
-    
+
     // Removes highlight style from element
     var unhighlightError = function(element) {
         var parent = getParentToHighlight(element);
         if (!parent.length) {
             return this;
         }
-        
+
         var relElementNames = parent.attr('data-has-error').split(' ');
 
         // A parent can receive errorClass for several elements, listed in data-has-error.
@@ -146,38 +157,38 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
         if (doUnhighlight) {
             parent.removeClass(errorClass);
         }
-        
+
         return this;
     }
-    
+
     // Displays given error (while replacing any existing error)
     var addError = function(element, errorMessage) {
         var errorContainer = getErrorContainer(element);
 
         errorContainer.empty()
-            .append('<li>' + errorMessage + '</li>');
-        
+        .append('<li>' + errorMessage + '</li>');
+
         highlightError(element);
-        
+
         return this;
     }
-    
+
     // Tells whether element has any errors attached to it
     var hasError = function(element) {
         var errorContainer = getErrorContainer(element);
         return errorContainer.children().size() > 0;
     }
-    
+
     // Removes error container for given element
     var removeError = function(element) {
         var errorContainer = getErrorContainer(element);
         errorContainer.empty();
-        
+
         unhighlightError(element);
-        
+
         return this;
     }
-    
+
     var addValidationsAndSubmitHandler = function() {
         $.validator.setDefaults({
             errorClass: errorClass,
@@ -198,7 +209,7 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
                 }
             }
         });
-        
+
         simpleForm.validate({
             submitHandler: submitHandler,
             rules: {
@@ -317,7 +328,7 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
                 }
             }
         });
-        
+
         advancedForm.validate({
             submitHandler: submitHandler,
             rules: {
@@ -337,7 +348,27 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
                 }
             }
         });
-        
+        mailForm.validate({
+            submitHandler: submitHandler,
+            rules: {
+                'command': {
+                    required: true
+                },
+                'expression': {
+                    required: true
+                }
+            },
+            messages: {
+                'command': {
+                    required: "Command is required"
+                },
+                'expression': {
+                    required: "Time expression is required"
+                }
+            }
+        });
+
+
         // Manually trigger validation for checkbox-style button groups,
         // whenever the underlying checkboxes record a change
         $('.btn-group[data-toggle="buttons"] input', container).on('change', function() {
@@ -345,25 +376,25 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
             validator.element(this);
         });
     };
-    
+
     // Cycles through time radio options and toggles accompanying inputs (hour, minute, step)
     var toggleTimeInputs = function() {
         timePicker.each(function(i, radio) {            
             var radioChecked = $(radio).prop('checked');
             var timeInputDisabled = !radioChecked;
             var radioContainer = $(this).parents('.radio-time');
-            
+
             // Disable inputs and remove any validation errors
             $('input[type="number"]', radioContainer).each(function(i, timeInput) {
                 $(timeInput).prop('disabled', timeInputDisabled);
-                
+
                 if (timeInputDisabled) {
                     resetValidatedInput($(timeInput));
                 }
             });
         });
     };
-    
+
     // Shows fieldset corresponding to chosen "Repeat" option and hides the others
     var toggleRepeatFieldsets = function() {
         var selectedRepeat = repeatPicker.val();
@@ -375,17 +406,17 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
             }
         });
     };
-    
+
     // Removes validation artifacts for a disabled input
     // (workaround for jzaefferer/jquery-validation#224)
     var resetValidatedInput = function(input) {
         var parent = getParentToHighlight(input);
         parent.removeClass(errorClass);
-        
+
         removeError(input);
         input.removeAttr('aria-invalid');
     };
-    
+
     // Pads time fields with "0" for single-digit values
     // (works only on IE and Chrome for number inputs)
     var padTimeField = function(field) {
@@ -395,40 +426,40 @@ var AddJobDialog = function(container, crontabService, globalAlertService) {
         }
         return this;
     };
-    
+
     // Removes any newlines (CR, LF) in the given field
     var stripNewlines = function(field) {
         field.val(field.val().replace(/[\r\n]/g, ''));
         return this;
     };
-    
+
     // Toggle accompanying inputs when cycling through radio options
     timePicker.on('change', toggleTimeInputs);
-    
+
     // Emulate "label" behavior when text acting as label is clicked
     $('.radio-every-hour, .radio-every-minute').click(function() {
         $('input[type="radio"]', $(this)).prop('checked', true);
         toggleTimeInputs();
     });
-    
+
     // Toggle fieldset corresponding to chosen "Repeat" option
     repeatPicker.on('change', function() {
         toggleRepeatFieldsets();
     });
-    
+
     // Restrict the usage of newlines (CR, LF) in the command field
     $('textarea.command', container).on('blur', function() {
         stripNewlines($(this));
     });
-    
+
     addValidationsAndSubmitHandler();
     toggleTimeInputs();
     toggleRepeatFieldsets();
-    
+
     padTimeField($('input[name="time[specificTime][hour]"]', container));
     padTimeField($('input[name="time[specificTime][minute]"]', container));
     padTimeField($('input[name="time[everyHour][minute]"]', container));
-    
+
     saveButton.on('click', function(e) {
         var form = getActiveForm();
         form.submit();

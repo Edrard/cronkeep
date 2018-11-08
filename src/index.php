@@ -1,19 +1,19 @@
 <?php
 /**
- * Copyright 2014 Bogdan Ghervan
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Copyright 2014 Bogdan Ghervan
+* 
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 require_once 'vendor/autoload.php';
 use \models\Crontab;
@@ -38,11 +38,12 @@ $app->get('/', function() use ($app) {
     $systemUser   = new SystemUser();
     $simpleForm   = new AddJob\SimpleForm();
     $advancedForm = new AddJob\AdvancedForm();
-    
+    $mailForm     = new AddJob\MailForm();
+
     $showAlertAtUnavailable = $app->getCookie('showAlertAtUnavailable');
     $app->view->setData('showAlertAtUnavailable', $showAlertAtUnavailable !== null ?
         (bool) $showAlertAtUnavailable : true);
-    
+
     $app->view->appendVar('baseUrl', $app->view->url());
     $app->render('index.phtml', array(
         'crontab'              => $crontab,
@@ -50,20 +51,30 @@ $app->get('/', function() use ($app) {
         'isAtCommandAvailable' => At::isAvailable(),
         'atCommandErrorOutput' => At::getErrorOutput(),
         'simpleForm'           => $simpleForm,
-        'advancedForm'         => $advancedForm
+        'advancedForm'         => $advancedForm,
+        'mailForm'             => $mailForm
     ));
 });
+function simpleData(&$formData){
+    $formData['expression'] = ExpressionService::createExpression($formData);
+}
+function mailData(&$f){
+    $f['command'] = 'php '.$f['path'].' "'.$f['from'].'" "'.$f['to'].'" "'.$f['subject'].'" "'.$f['command'];
+}
+function advancedData(&$formData){
+
+}
 
 /**
- * Groups cron job related routes.
- */
+* Groups cron job related routes.
+*/
 $app->group('/job', function() use ($app) {
     /**
-     * Should be used as a route middleware to allow for the response
-     * to be JSON in the route's callable.
-     * 
-     * @return void
-     */
+    * Should be used as a route middleware to allow for the response
+    * to be JSON in the route's callable.
+    * 
+    * @return void
+    */
     $setupJsonResponse = function() {
         $app = \Slim\Slim::getInstance();
         $app->add(new \SlimJson\Middleware());
@@ -74,24 +85,20 @@ $app->group('/job', function() use ($app) {
             ));
         });
     };
-    
+
     /**
-     * Adds or edits a cron job.
-     */
+    * Adds or edits a cron job.
+    */
     $app->post('/save', $setupJsonResponse, function() use ($app) {
         $formData = $app->request->post();
         $hash = $app->request->params('hash');
-        
         $form = AddJob\FormFactory::createForm($formData);
         if ($form->isValid()) {
             $crontab = new Crontab();
-            
-            if ($formData['mode'] == AddJob\FormFactory::SIMPLE) {
-                $expression = ExpressionService::createExpression($formData);
-            } else {
-                $expression = $formData['expression'];
-            }
-            
+            $func = $formData['mode'].'Data';
+            $func($formData);
+            $expression = $formData['expression'];
+
             // This is an edit
             if ($hash) {    
                 $job = $crontab->findByHash($hash);
@@ -105,18 +112,18 @@ $app->group('/job', function() use ($app) {
             } else {
                 $job = new Crontab\Job();
             }
-            
+
             $job->setExpression($expression);
             $job->setCommand($formData['command']);
             $job->setComment($formData['name']);
-            
+
             if ($hash) {
                 $crontab->update($job);
             } else {
                 $crontab->add($job);
             }
             $crontab->save();
-            
+
             $response = array(
                 'error' => false,
                 'msg' => 'The job has been saved.',
@@ -127,7 +134,7 @@ $app->group('/job', function() use ($app) {
                     'job' => $job
                 ));
             }
-            
+
             $app->render(200, $response);
         } else {
             $app->render(500, array(
@@ -136,7 +143,7 @@ $app->group('/job', function() use ($app) {
             ));
         }
     });
-    
+
     $app->get('/edit-form/:hash', $setupJsonResponse, function($hash) use ($app) {
         $crontab = new Crontab();
         $job = $crontab->findByHash($hash);
@@ -147,9 +154,9 @@ $app->group('/job', function() use ($app) {
             ));
             $app->stop();
         }
-        
+
         $expressionService = new ExpressionService();
-        
+
         // Prepare simple form
         $simpleForm = null;
         if ($expressionService->isSimpleExpression($job->getExpression())) {
@@ -158,13 +165,13 @@ $app->group('/job', function() use ($app) {
             $simpleForm->get('command')->setValue($job->getCommand());
             $expressionService->hydrateSimpleForm($job->getExpression(), $simpleForm);
         }
-        
+
         // Prepare advanced form
         $advancedForm = new AddJob\AdvancedForm();
         $advancedForm->get('name')->setValue($job->getComment());
         $advancedForm->get('command')->setValue($job->getCommand());
         $advancedForm->get('expression')->setValue($job->getExpression());
-        
+
         $app->render(200, array(
             'error' => false,
             'html'  => $app->config('view')->partial('partials/job-edit-dialog.phtml', array(
@@ -174,17 +181,17 @@ $app->group('/job', function() use ($app) {
             ))
         ));
     });
-    
+
     /**
-     * Runs a cron job in background.
-     */
+    * Runs a cron job in background.
+    */
     $app->get('/run/:hash', $setupJsonResponse, function($hash) use ($app) {
         $crontab = new Crontab();
         $job = $crontab->findByHash($hash);
-        
+
         if ($job) {
             $crontab->run($job);
-            
+
             $app->render(200, array(
                 'error' => false,
                 'msg' => 'Process started.'
@@ -196,18 +203,18 @@ $app->group('/job', function() use ($app) {
             ));
         }
     });
-    
+
     /**
-     * Pauses schedule by commenting the job in crontab, so it no longer runs when
-     * is is supposed to.
-     */
+    * Pauses schedule by commenting the job in crontab, so it no longer runs when
+    * is is supposed to.
+    */
     $app->get('/pause/:hash', $setupJsonResponse, function($hash) use ($app) {
         $crontab = new Crontab();
         $job = $crontab->findByHash($hash);
-        
+
         if ($job) {
             $crontab->pause($job)->save();
-            
+
             $app->render(200, array(
                 'error' => false,
                 'msg' => 'Job schedule has been paused.',
@@ -220,17 +227,17 @@ $app->group('/job', function() use ($app) {
             ));
         }
     });
-    
+
     /**
-     * Resumes schedule by un-commenting the job in crontab.
-     */
+    * Resumes schedule by un-commenting the job in crontab.
+    */
     $app->get('/resume/:hash', $setupJsonResponse, function($hash) use ($app) {
         $crontab = new Crontab();
         $job = $crontab->findByHash($hash);
-        
+
         if ($job) {
             $crontab->resume($job)->save();
-            
+
             $app->render(200, array(
                 'error' => false,
                 'msg' => 'Job schedule has been resumed.',
@@ -243,17 +250,17 @@ $app->group('/job', function() use ($app) {
             ));
         }
     });
-    
+
     /**
-     * Deletes job from crontab.
-     */
+    * Deletes job from crontab.
+    */
     $app->get('/delete/:hash', $setupJsonResponse, function($hash) use ($app) {
         $crontab = new Crontab();
         $job = $crontab->findByHash($hash);
-        
+
         if ($job) {
             $crontab->delete($job)->save();
-            
+
             $app->render(200, array(
                 'error' => false,
                 'msg' => 'Job has been deleted.'
@@ -268,8 +275,8 @@ $app->group('/job', function() use ($app) {
 });
 
 /**
- * Global error handler.
- */
+* Global error handler.
+*/
 $app->error(function (\Exception $e) use ($app) {
     $template = 'partials/alerts/unknown-error.phtml';
     switch (true) {
@@ -283,7 +290,7 @@ $app->error(function (\Exception $e) use ($app) {
             $template = 'partials/alerts/pam-unreadable.phtml';
             break;
     }
-    
+
     $app->render($template, array('e' => $e));
 });
 

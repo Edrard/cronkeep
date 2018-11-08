@@ -3,3 +3,4 @@
 /.vagrant
 /src/vendor/*
 /nbproject
+composer.lock

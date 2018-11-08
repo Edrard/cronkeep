@@ -1,5 +1,5 @@
 {
-    "name": "cronkeep/cronkeep",
+    "name": "Edrard/cronkeep",
     "description": "Web-based crontab manager",
     "keywords": ["crontab", "cron"],
     "type": "project",
@@ -9,6 +9,12 @@
         {
             "name": "Bogdan Ghervan",
             "email": "bogdan.ghervan@gmail.com",
+            "homepage": "https://www.linkedin.com/in/bogdanghervan",
+            "role": "Developer"
+        },
+        {
+            "name": "Ustinov Oleksandr",
+            "email": "uav@vamark.com",
             "homepage": "https://www.linkedin.com/in/bogdanghervan",
             "role": "Developer"
         }
@@ -33,13 +39,10 @@
     },
     "autoload": {
         "psr-4": {
-            "models\\": "src/application/models/",
-            "services\\": "src/application/services/",
-            "forms\\": "src/application/forms/",
-            "library\\": "src/library/"
+            "models\\": "application/models/",
+            "services\\": "application/services/",
+            "forms\\": "application/forms/",
+            "library\\": "library/"
         }
-    },
-    "config": {
-        "vendor-dir": "src/vendor"
     }
 }

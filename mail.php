@@ -3,6 +3,7 @@
 require_once 'vendor/autoload.php';
 
 $transport = new Swift_SendmailTransport('/usr/sbin/sendmail -bs');
+$transport = new Swift_SmtpTransport('127.0.0.1', 25);
 $mailer = new Swift_Mailer($transport);
 
 $from = isset($argv[1]) ? trim($argv[1]) : die();

@@ -59,7 +59,7 @@ function simpleData(&$formData){
     $formData['expression'] = ExpressionService::createExpression($formData);
 }
 function mailData(&$f){
-    $f['command'] = 'php '.$f['path'].' "'.$f['from'].'" "'.$f['to'].'" "'.$f['subject'].'" "'.$f['command'];
+    $f['command'] = 'php '.$f['path'].' "'.$f['from'].'" "'.$f['to'].'" "'.$f['subject'].'" "'.$f['command'].'"';
 }
 function advancedData(&$formData){
 

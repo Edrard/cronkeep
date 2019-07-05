@@ -11,7 +11,6 @@ $to = isset($argv[2]) ? trim($argv[2]) : die();
 
 $subject = isset($argv[3]) ? reMsg(trim($argv[3])) : '';
 $msg = isset($argv[4]) ? reMsg(trim($argv[4])) : '';
-print_r($msg); die;
 $message = (new Swift_Message($subject))
   ->setFrom($from)
   ->setTo($to)

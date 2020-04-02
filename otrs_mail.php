@@ -11,20 +11,17 @@ $to = isset($argv[2]) ? trim($argv[2]) : die();
 
 $subject = isset($argv[3]) ? reMsg(trim($argv[3])) : '';
 $msg = isset($argv[4]) ? reMsg(trim($argv[4])) : '';
-$header_add = isset($argv[5]) ? json_decode(trim($argv[5]),TRUE) : NULL;
+$header_add = isset($argv[4]) ? reMsg(trim($argv[4])) : NULL;
+
 
 $message = (new Swift_Message($subject))
   ->setFrom($from)
   ->setTo($to)
   ->setBody($msg)
   ;
-
 if($header_add !== NULL){
     $headers = $message->getHeaders();
-    foreach($header_add as $key => $val){
-    $headers->addTextHeader($key, $val);    //'X-OTRS-ResponsibleID'
-        $headers->addTextHeader($key, $val);
-    }
+    $headers->addTextHeader('X-OTRS-ResponsibleID', $header_add);
 }
 
 // Send the message
